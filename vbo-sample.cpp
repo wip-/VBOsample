@@ -221,13 +221,33 @@ display()
     glBindBuffer(GL_ARRAY_BUFFER, g_State.dataBufferID);
     
 
-    int attributesCount = 2;            // position and color
-    GLint     components = 4;           // both position and color have 4 components
-    GLenum    type       = GL_FLOAT;
-    GLboolean normalized = GL_FALSE;
-    GLsizei   stride     = attributesCount * components * sizeof(GLfloat);
+    int attributesCount    = 2;         // position and color
+    GLint     components   = 4;         // both position and color have 4 components
+
+#if 1
+    // For floats
+    GLenum    type         = GL_FLOAT;
+    GLboolean normalized   = GL_FALSE;
+    GLint     dataTypeSize = sizeof(GLfloat);
+#endif
+
+#if 0
+    // For shorts
+    GLenum    type         = GL_SHORT;
+    GLboolean normalized   = GL_TRUE;
+    GLint     dataTypeSize = sizeof(GLshort);
+#endif
+
+#if 0
+    // For bytes
+    GLenum    type         = GL_BYTE;
+    GLboolean normalized   = GL_TRUE;
+    GLint     dataTypeSize = sizeof(GLbyte);
+#endif
+
+    GLsizei   stride       = attributesCount * components * dataTypeSize;
     GLvoid*   positionArrayStart = 0;
-    GLint     colorArrayStart = components * sizeof(GLfloat);   // first color data is after the first position data
+    GLint     colorArrayStart = components * dataTypeSize;   // first color data is after the first position data
     glVertexAttribPointer(g_State.positionLocation, components, type, normalized, stride, positionArrayStart);
     glVertexAttribPointer(g_State.colorLocation,    components, type, normalized, stride, (GLvoid*)colorArrayStart);
        
