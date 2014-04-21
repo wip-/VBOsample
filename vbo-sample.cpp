@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include "data\my_data.h"
+#include <iosfwd>
 
 // Based on http://stupomerantz.com/public/opengl/example-06/example-06.cc.html
 
@@ -148,7 +149,7 @@ shaderProgramBuild(const GLchar *vertex, const GLchar *fragment)
 // return vertex count
 int loadVertexData()
 {
-    FILE* f = fopen("data\\my_data.bin", "r");
+    FILE* f = fopen("data\\my_data.bin", "rb");
 
     if(!f)
     {
@@ -166,12 +167,13 @@ int loadVertexData()
 
     VertexData* vertexData = new VertexData[vertexCount];
     fread(vertexData, itemSize, vertexCount, f);
+
     fclose(f);
 
     glGenBuffers(1, &g_State.dataBufferID);
     glBindBuffer(GL_ARRAY_BUFFER, g_State.dataBufferID);
     glBufferData(GL_ARRAY_BUFFER, dataByteSize, vertexData, GL_STATIC_DRAW);
-    
+
     delete [] vertexData;
 
     return vertexCount;
@@ -255,8 +257,12 @@ display()
     glEnableVertexAttribArray(g_State.colorLocation);
     glEnableVertexAttribArray(g_State.positionLocation);
 
-        // DRAW
-        glDrawArrays(GL_TRIANGLES, 0, g_State.vertexCount);
+    // DRAW
+#if 0
+    glDrawArrays(GL_TRIANGLES, 0, g_State.vertexCount);
+#else
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, g_State.vertexCount);
+#endif
 
     glUseProgram(0);
 
