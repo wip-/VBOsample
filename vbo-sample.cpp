@@ -12,14 +12,37 @@
 
 // Based on http://stupomerantz.com/public/opengl/example-06/example-06.cc.html
 
+
+#define VERTEX_DATA_TYPE_FLOAT 0
+#define VERTEX_DATA_TYPE_SHORT 1
+#define VERTEX_DATA_TYPE_BYTE  2
+#define VERTEX_DATA_TYPE       VERTEX_DATA_TYPE_FLOAT
+
+#define PRIMITIVE_TYPE_TRIANGLE_ARRAY 0
+#define PRIMITIVE_TYPE_TRIANGLE_STRIP 1
+#define PRIMITIVE_TYPE                PRIMITIVE_TYPE_TRIANGLE_ARRAY
+
+#define INDEXED_MODE_OFF 0
+#define INDEXED_MODE_ON  1      // <- there's a bug with indexed mode ! TODO: fix
+#define INDEXED_MODE     INDEXED_MODE_OFF
+
+
 struct State 
 {
     GLhandleARB shaderProgram;
-    GLuint      dataBufferID;
-    GLint       positionLocation;  
-    GLint       colorLocation;
+    GLuint      vertexBufferID;
 
-    int vertexCount;
+    GLint       positionLocation;  
+    GLint       colorLocation;  
+
+#if INDEXED_MODE==INDEXED_MODE_OFF
+    int         vertexCount;
+#endif
+
+#if INDEXED_MODE==INDEXED_MODE_ON
+    GLuint      indexBufferID;
+    int         indexCount;
+#endif
 };
 State g_State;
 
@@ -146,8 +169,8 @@ shaderProgramBuild(const GLchar *vertex, const GLchar *fragment)
 
 
 
-// return vertex count
-int loadVertexData()
+
+void loadData()
 {
     FILE* f = fopen("data\\my_data.bin", "rb");
 
@@ -162,22 +185,47 @@ int loadVertexData()
     long dataByteSize = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    int itemSize = sizeof(VertexData);
-    int vertexCount = dataByteSize / itemSize;
+    int vertexDataItemSize = sizeof(VertexData);
 
-    VertexData* vertexData = new VertexData[vertexCount];
-    fread(vertexData, itemSize, vertexCount, f);
+    int vertexDataSize = g_VertexCount * vertexDataItemSize;
+    VertexData* vertexData = new VertexData[g_VertexCount];
+    fread(vertexData, vertexDataItemSize, g_VertexCount, f);
+
+    int indexDataSize  = dataByteSize - vertexDataSize;
+#if INDEXED_MODE==INDEXED_MODE_OFF
+    if( indexDataSize != 0 )
+    {
+        fprintf(stderr, "data size error \n");
+        __debugbreak();
+    }
+#endif
+
+#if INDEXED_MODE==INDEXED_MODE_ON
+    int indexItemSize = sizeof(int);
+    g_State.indexCount = indexDataSize / indexItemSize;
+     
+    int* indexData = new int[g_State.indexCount];
+    fread(indexData, indexItemSize, g_State.indexCount, f);
+#endif
 
     fclose(f);
+    
 
-    glGenBuffers(1, &g_State.dataBufferID);
-    glBindBuffer(GL_ARRAY_BUFFER, g_State.dataBufferID);
-    glBufferData(GL_ARRAY_BUFFER, dataByteSize, vertexData, GL_STATIC_DRAW);
-
+    glGenBuffers(1, &g_State.vertexBufferID);
+    glBindBuffer(GL_ARRAY_BUFFER, g_State.vertexBufferID);
+    glBufferData(GL_ARRAY_BUFFER, vertexDataSize, vertexData, GL_STATIC_DRAW);
     delete [] vertexData;
 
-    return vertexCount;
+#if INDEXED_MODE==INDEXED_MODE_ON
+    glGenBuffers(1, &g_State.indexBufferID);
+    glBindBuffer(GL_ARRAY_BUFFER, g_State.indexBufferID);
+    glBufferData(GL_ARRAY_BUFFER, indexDataSize, indexData, GL_STATIC_DRAW);
+    delete [] indexData;
+#endif
 }
+
+
+
 
 
 
@@ -200,7 +248,7 @@ initialize()
         exit(1);
     }
 
-    g_State.vertexCount = loadVertexData();
+    loadData();
 
     glFinish();
 }
@@ -220,27 +268,31 @@ display()
     glUseProgram(g_State.shaderProgram);
 
     // bind the vertex buffer for drawing
-    glBindBuffer(GL_ARRAY_BUFFER, g_State.dataBufferID);
-    
+    glBindBuffer(GL_ARRAY_BUFFER, g_State.vertexBufferID); 
+    //glEnableClientState(GL_VERTEX_ARRAY);
+
+#if INDEXED_MODE==INDEXED_MODE_ON
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_State.indexBufferID); 
+#endif
 
     int attributesCount    = 2;         // position and color
-    GLint     components   = 4;         // both position and color have 4 components
+    GLint     components   = 4;         // both position and color have 4 components (x, y, z, w)
 
-#if 1
+#if VERTEX_DATA_TYPE==VERTEX_DATA_TYPE_FLOAT
     // For floats
     GLenum    type         = GL_FLOAT;
     GLboolean normalized   = GL_FALSE;
     GLint     dataTypeSize = sizeof(GLfloat);
 #endif
 
-#if 0
+#if VERTEX_DATA_TYPE==VERTEX_DATA_TYPE_SHORT
     // For shorts
     GLenum    type         = GL_SHORT;
     GLboolean normalized   = GL_TRUE;
     GLint     dataTypeSize = sizeof(GLshort);
 #endif
 
-#if 0
+#if VERTEX_DATA_TYPE==VERTEX_DATA_TYPE_BYTE
     // For bytes
     GLenum    type         = GL_BYTE;
     GLboolean normalized   = GL_TRUE;
@@ -258,10 +310,21 @@ display()
     glEnableVertexAttribArray(g_State.positionLocation);
 
     // DRAW
-#if 0
-    glDrawArrays(GL_TRIANGLES, 0, g_State.vertexCount);
-#else
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, g_State.vertexCount);
+#if PRIMITIVE_TYPE==PRIMITIVE_TYPE_TRIANGLE_ARRAY
+    #if INDEXED_MODE==INDEXED_MODE_ON
+        glDrawArrays(GL_TRIANGLES, 0, g_State.indexCount);
+        //glDrawElements(GL_TRIANGLES, g_State.indexCount, GL_UNSIGNED_INT, )
+    #else
+        glDrawArrays(GL_TRIANGLES, 0, g_VertexCount);
+    #endif
+#endif
+
+#if PRIMITIVE_TYPE==PRIMITIVE_TYPE_TRIANGLE_STRIP
+    #if INDEXED_MODE==INDEXED_MODE_ON
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, g_State.indexCount);  
+    #else
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, g_VertexCount);  
+    #endif
 #endif
 
     glUseProgram(0);

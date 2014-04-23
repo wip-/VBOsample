@@ -1,3 +1,5 @@
+const int g_VertexCount = 384;
+
 struct VertexData
 {               
     float POS_X;       
