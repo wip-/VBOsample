@@ -20,11 +20,11 @@
 
 #define PRIMITIVE_TYPE_TRIANGLE_ARRAY 0
 #define PRIMITIVE_TYPE_TRIANGLE_STRIP 1
-#define PRIMITIVE_TYPE                PRIMITIVE_TYPE_TRIANGLE_ARRAY
+#define PRIMITIVE_TYPE                PRIMITIVE_TYPE_TRIANGLE_STRIP
 
 #define INDEXED_MODE_OFF 0
-#define INDEXED_MODE_ON  1      // <- there's a bug with indexed mode ! TODO: fix
-#define INDEXED_MODE     INDEXED_MODE_OFF
+#define INDEXED_MODE_ON  1
+#define INDEXED_MODE     INDEXED_MODE_ON
 
 
 struct State 
@@ -34,10 +34,6 @@ struct State
 
     GLint       positionLocation;  
     GLint       colorLocation;  
-
-#if INDEXED_MODE==INDEXED_MODE_OFF
-    int         vertexCount;
-#endif
 
 #if INDEXED_MODE==INDEXED_MODE_ON
     GLuint      indexBufferID;
@@ -218,8 +214,8 @@ void loadData()
 
 #if INDEXED_MODE==INDEXED_MODE_ON
     glGenBuffers(1, &g_State.indexBufferID);
-    glBindBuffer(GL_ARRAY_BUFFER, g_State.indexBufferID);
-    glBufferData(GL_ARRAY_BUFFER, indexDataSize, indexData, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_State.indexBufferID);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexDataSize, indexData, GL_STATIC_DRAW);
     delete [] indexData;
 #endif
 }
@@ -312,8 +308,7 @@ display()
     // DRAW
 #if PRIMITIVE_TYPE==PRIMITIVE_TYPE_TRIANGLE_ARRAY
     #if INDEXED_MODE==INDEXED_MODE_ON
-        glDrawArrays(GL_TRIANGLES, 0, g_State.indexCount);
-        //glDrawElements(GL_TRIANGLES, g_State.indexCount, GL_UNSIGNED_INT, )
+        glDrawElements(GL_TRIANGLES, g_State.indexCount, GL_UNSIGNED_INT, (void*)0);
     #else
         glDrawArrays(GL_TRIANGLES, 0, g_VertexCount);
     #endif
@@ -321,7 +316,7 @@ display()
 
 #if PRIMITIVE_TYPE==PRIMITIVE_TYPE_TRIANGLE_STRIP
     #if INDEXED_MODE==INDEXED_MODE_ON
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, g_State.indexCount);  
+        glDrawElements(GL_TRIANGLE_STRIP, g_State.indexCount, GL_UNSIGNED_INT, (void*)0);
     #else
         glDrawArrays(GL_TRIANGLE_STRIP, 0, g_VertexCount);  
     #endif

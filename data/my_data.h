@@ -1,4 +1,4 @@
-const int g_VertexCount = 384;
+const int g_VertexCount = 9;
 
 struct VertexData
 {               
